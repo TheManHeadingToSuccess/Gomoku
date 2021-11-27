@@ -1,0 +1,387 @@
+import java.awt.*;
+
+public class NewGomoku {
+    public static void main(String[] args) {
+        startGomoku();
+    }
+    public static void startGomoku() {
+        StdDraw.clear();
+        StdDraw.enableDoubleBuffering();
+        int switcher;  //声明开关
+        formFirstGUI();  //显示首页
+        while ( true ) {  //实现鼠标实时监听
+
+            do {
+                switcher = 0;
+                while ( StdDraw.isMousePressed() ) {
+                    if ( clickButtonToChooseMode(1) ) switcher = 1;
+                    if ( clickButtonToChooseMode(2) ) switcher = 2;
+                    if ( clickButtonToExit1() ) System.exit(0);
+                }
+            } while ( switcher == 0 );  //选择模式：1——PVP；2——PVC
+
+            switch ( switcher ) {
+                case 1 :
+                    chooseSizeGUI();  //显示选择棋盘规格界面
+                    do {
+                        switcher = 0;
+                        while (StdDraw.isMousePressed()) {
+                            if ( clickButtonToFormSize(15) ) switcher = 11;
+                            if ( clickButtonToFormSize(17) ) switcher = 12;
+                            if ( clickButtonToFormSize(19) ) switcher = 13;
+                        }
+                    } while ( switcher == 0 );  //选择不同的棋盘规格
+
+                    switch ( switcher ) {
+                        case 11 :
+                            gamePVP( 15 );
+                        case 12 :
+                            gamePVP( 17 );
+                        case 13 :
+                            gamePVP( 19 );
+                    }  //开始游戏
+            }
+        }
+    }
+    //以上为开始游戏函数
+
+    public static void gamePVP( int boardSize ) {
+        final Font title = new Font("SansSerif", Font.BOLD, 40);
+        formBoard(boardSize);
+
+        int[][] cross = new int[boardSize + 2][2*boardSize + 3];
+        for (int i = 1; i < boardSize + 1; i++) {
+            for (int j = 1; j < boardSize + 1; j++) {
+                cross[i][j] = 0;
+            }
+        }
+        int color = 2;
+        StdDraw.setPenColor(Color.BLACK);
+        int judgment;
+        int switcher;
+        while (true) {
+            switcher = 0;
+            do {
+                while (StdDraw.isMousePressed()) {
+
+                    if (CanInput(cross[(int) Math.round(StdDraw.mouseY())][(int) Math.round(StdDraw.mouseX())])) {
+                        cross[(int) Math.round(StdDraw.mouseY())][(int) Math.round(StdDraw.mouseX())] = color;
+                        if (color == 1) {
+                            color++;
+                        } else if (color == 2) {
+                            color--;
+                        }
+                    }
+
+                    for (int i = 1; i < boardSize + 1; i++) {
+                        for (int j = 1; j < boardSize + 1; j++) {
+
+                            if (cross[i][j] == 1) {
+                                StdDraw.setPenColor(Color.WHITE);
+                                StdDraw.filledCircle(j, i, 0.4);
+                                StdDraw.show();
+
+                            }
+                            if (cross[i][j] == 2) {
+                                StdDraw.setPenColor(Color.BLACK);
+                                StdDraw.filledCircle(j, i, 0.4);
+                                StdDraw.show();
+
+                            }
+                            judgment = checkVictory(j, i, 1, cross, boardSize);
+                            if (judgment == 1) {
+                                victoryGUI( 1 );
+                                do {
+                                    switcher = 2;
+                                    while ( StdDraw.isMousePressed() ) {
+                                        if ( clickButtonToExit2() ) switcher = 31;
+                                        if ( clickButtonToPlayAgain() ) switcher = 32;
+                                    }
+                                } while ( switcher == 2 );
+                            }
+                            judgment = checkVictory(j, i, 2, cross, boardSize);
+                            if (judgment == 2) {
+                                victoryGUI(2);
+                                do {
+                                    switcher = 2;
+                                    while ( StdDraw.isMousePressed() ) {
+                                        if ( clickButtonToExit2() ) switcher = 31;
+                                        if ( clickButtonToPlayAgain() ) switcher = 32;
+                                    }
+                                } while ( switcher == 2 );
+                            }
+                            switch ( switcher ) {
+                                case 31 :
+                                    if (judgment == 2) {
+                                        System.out.println("GAME OVER. BLACK WINS.");
+                                    }
+                                    else {
+                                        System.out.println("GAME OVER. WHITE WINS.");
+                                    }
+                                    System.exit(0);
+                                case 32 :
+                                    startGomoku();
+                            }
+                        }
+                    }
+                    switcher = 1;
+                }
+            } while (switcher == 1);
+        }
+    }
+    //以上为人人对战函数
+
+    public static void formFirstGUI() {
+        StdDraw.clear();
+        StdDraw.setPenColor(StdDraw.BLACK);
+        final Font title = new Font("SansSerif", Font.BOLD, 40);
+        final Font button = new Font("SansSerif", Font.PLAIN, 20);
+        final Font exit = new Font("SansSerif", Font.PLAIN, 15);
+
+        StdDraw.setFont( title );
+        StdDraw.text( 0.5, 0.8, "Gomoku" );
+        //Make Button1.
+        StdDraw.setPenColor( 0, 0, 170 );
+        StdDraw.filledRectangle( 0.5, 0.6, 0.2, 0.075 );
+        StdDraw.filledCircle( 0.3, 0.6, 0.075 );
+        StdDraw.filledCircle( 0.7, 0.6, 0.075 );
+        StdDraw.setFont( button );
+        StdDraw.setPenColor( 255, 255, 255 );
+        StdDraw.text( 0.5, 0.6, "Play With People" );
+        //Make Button2.
+        StdDraw.setPenColor( 0, 0, 170 );
+        StdDraw.filledRectangle( 0.5, 0.4, 0.2, 0.075 );
+        StdDraw.filledCircle( 0.3, 0.4, 0.075 );
+        StdDraw.filledCircle( 0.7, 0.4, 0.075 );
+        StdDraw.setFont( button );
+        StdDraw.setPenColor( 255, 255, 255 );
+        StdDraw.text( 0.5, 0.40, "Play With Computer" );
+        //Make Exit button.
+        StdDraw.setPenColor( 204, 34, 0 );
+        StdDraw.filledRectangle( 0.9, 0.05, 0.05, 0.03 );
+        StdDraw.filledCircle( 0.85, 0.05, 0.03 );
+        StdDraw.filledCircle( 0.95, 0.05, 0.03 );
+        StdDraw.setFont( exit );
+        StdDraw.setPenColor( 255, 255, 255 );
+        StdDraw.text( 0.9, 0.05, "Exit" );
+        //Top left decoration.
+        StdDraw.setPenColor( 0, 0, 170 );
+        double[] triangleX = { 0.0, 0.0, 0.1 };
+        double[] triangleY = { 0.9, 1.0, 1.0 };
+        StdDraw.filledPolygon( triangleX, triangleY );
+       /* //Top right Settings.
+        StdDraw.setPenColor( 0, 0, 170 );
+        StdDraw.filledRectangle( 0.9, 0.95, 0.05, 0.03 );
+        StdDraw.filledCircle( 0.85, 0.95, 0.03 );
+        StdDraw.filledCircle( 0.95, 0.95, 0.03 );
+        StdDraw.setFont( exit );
+        StdDraw.setPenColor( 255, 255, 255 );
+        StdDraw.text( 0.9, 0.95, "Settings" );*/
+        //Edition.
+        StdDraw.setFont( exit );
+        StdDraw.setPenColor(128, 128, 128);
+        StdDraw.text( 0.15, 0.03, "1.0.0.111921_beta" );
+        StdDraw.show();
+    }
+    public static void chooseSizeGUI() {
+        StdDraw.clear();
+        final Font title = new Font("SansSerif", Font.BOLD, 40);
+        final Font button = new Font("SansSerif", Font.PLAIN, 20);
+        final Font exit = new Font("SansSerif", Font.PLAIN, 15);
+
+        StdDraw.setFont(title);
+        StdDraw.setPenColor(StdDraw.BLACK);
+        StdDraw.text(0.5, 0.8, "Choose Board Size");
+        //Make subButton1.
+        StdDraw.setPenColor(0, 0, 170);
+        StdDraw.filledRectangle(0.5, 0.6, 0.2, 0.075);
+        StdDraw.filledCircle(0.3, 0.6, 0.075);
+        StdDraw.filledCircle(0.7, 0.6, 0.075);
+        StdDraw.setFont(button);
+        StdDraw.setPenColor(255, 255, 255);
+        StdDraw.text(0.5, 0.6, "15 × 15");
+        //Make subButton2.
+        StdDraw.setPenColor(0, 0, 170);
+        StdDraw.filledRectangle(0.5, 0.4, 0.2, 0.075);
+        StdDraw.filledCircle(0.3, 0.4, 0.075);
+        StdDraw.filledCircle(0.7, 0.4, 0.075);
+        StdDraw.setFont(button);
+        StdDraw.setPenColor(255, 255, 255);
+        StdDraw.text(0.5, 0.40, "17 × 17");
+        //Make subButton3.
+        StdDraw.setPenColor(0, 0, 170);
+        StdDraw.filledRectangle(0.5, 0.2, 0.2, 0.075);
+        StdDraw.filledCircle(0.3, 0.2, 0.075);
+        StdDraw.filledCircle(0.7, 0.2, 0.075);
+        StdDraw.setFont(button);
+        StdDraw.setPenColor(255, 255, 255);
+        StdDraw.text(0.5, 0.2, "19 × 19");
+        /*//Make subButton4.
+        StdDraw.setPenColor(204, 34, 0);
+        StdDraw.filledRectangle(0.1, 0.05, 0.05, 0.03);
+        StdDraw.filledCircle(0.05, 0.05, 0.03);
+        StdDraw.filledCircle(0.15, 0.05, 0.03);
+        StdDraw.setFont(exit);
+        StdDraw.setPenColor(255, 255, 255);
+        StdDraw.text(0.1, 0.05, "Return");*/
+        StdDraw.show();
+    }
+    public static void formBoard ( int boardSize ) {
+        StdDraw.clear();
+        StdDraw.setCanvasSize(512, 512);
+        StdDraw.setXscale( 0, boardSize + 1 );
+        StdDraw.setYscale( 0, boardSize + 1 );
+        StdDraw.clear();
+        StdDraw.setPenColor( 120, 120, 120 );
+        StdDraw.filledSquare( (boardSize+1)/2.0, (boardSize+1)/2.0, (boardSize+1)/2.0 );
+        StdDraw.setPenColor( StdDraw.BLACK );
+        for (int i = 0 ; i < boardSize+1; i++) {
+            StdDraw.line(i, boardSize+1, i, 0);
+            StdDraw.line(boardSize+1, i, 0, i);
+        }
+        StdDraw.show();
+    }
+    public static void victoryGUI( int chess ) {
+        final Font button = new Font("SansSerif", Font.PLAIN, 20);
+        final Font title = new Font("SansSerif", Font.BOLD, 40);
+        StdDraw.clear();
+        StdDraw.setCanvasSize(512, 512);
+        StdDraw.setXscale( 0, 1 );
+        StdDraw.setYscale( 0, 1 );
+        if ( chess == 1 ) {
+        StdDraw.setFont( title );
+        StdDraw.setPenColor( 0, 0, 0 );
+        StdDraw.text( 0.5, 0.65,
+                "Congratulations!" );
+        StdDraw.text( 0.5, 0.55,
+                "WHITE wins!" );
+        }
+        if ( chess == 2 ) {
+            StdDraw.setFont( title );
+            StdDraw.setPenColor( 0, 0, 0 );
+            StdDraw.text( 0.5, 0.65,
+                    "Congratulations!" );
+            StdDraw.text( 0.5, 0.55,
+                    "BLACK wins!" );
+        }
+        //Button1.
+        StdDraw.setPenColor(0, 0, 170);
+        StdDraw.filledRectangle( 0.25, 0.25, 0.1, 0.075);
+        StdDraw.filledCircle(0.15, 0.25, 0.075);
+        StdDraw.filledCircle(0.35, 0.25, 0.075);
+        StdDraw.setFont(button);
+        StdDraw.setPenColor(255, 255, 255);
+        StdDraw.text(0.25, 0.25, "PLAY AGAIN");
+        //Button2.
+        StdDraw.setPenColor(204, 34, 0);
+        StdDraw.filledRectangle( 0.75, 0.25, 0.1, 0.075);
+        StdDraw.filledCircle(0.65, 0.25, 0.075);
+        StdDraw.filledCircle(0.85, 0.25, 0.075);
+        StdDraw.setFont(button);
+        StdDraw.setPenColor(255, 255, 255);
+        StdDraw.text(0.75, 0.25, "EXIT");
+        StdDraw.show();
+    }
+    //以上四个为界面构造函数
+
+    public static boolean clickButtonToChooseMode (int buttonOrder) {
+        double x = StdDraw.mouseX();
+        double y = StdDraw.mouseY();
+        if ( 0.225 < x && x < 0.775 && 0.1 * ( (4 - buttonOrder)*2 ) - 0.075 < y && y < 0.1 * ( (4 - buttonOrder)*2 ) + 0.075 )
+            return true;
+        else return false;
+    }
+    public static boolean clickButtonToFormSize (int boardSize) {
+        double x = StdDraw.mouseX();
+        double y = StdDraw.mouseY();
+        if ( 0.225 < x && x < 0.775 && 0.1 * ( 21 - boardSize ) - 0.075 < y && y < 0.1 * ( 21 - boardSize ) + 0.075 )
+            return true;
+        else return false;
+    }
+    public static boolean clickButtonToExit1() {
+        double x = StdDraw.mouseX();
+        double y = StdDraw.mouseY();
+        if ( 0.82 < x && x < 0.98 && 0.02 < y && y < 0.08 )
+            return true;
+        else return false;
+    }
+    public static boolean clickButtonToExit2() {
+        double x = StdDraw.mouseX();
+        double y = StdDraw.mouseY();
+        if ( 0.575 < x && x < 0.925 && 0.175 < y && y < 0.325 )
+            return true;
+        else return false;
+    }
+    public static boolean clickButtonToPlayAgain() {
+        double x = StdDraw.mouseX();
+        double y = StdDraw.mouseY();
+        if ( 0.075 < x && x < 0.425 && 0.175 < y && y < 0.325 )
+            return true;
+        else return false;
+    }
+    public static boolean clickButtonToReturn() {
+        double x = StdDraw.mouseX();
+        double y = StdDraw.mouseY();
+        if ( 0.02 < x && x < 0.18 && 0.02 < y && y < 0.08 )
+            return true;
+        else return false;
+    }
+    //以上五个为按键判断函数
+
+    public static boolean CanInput(int cross) {
+        double y = StdDraw.mouseY();
+        if(cross==0) return true;
+        else return false;
+    }
+    public static int checkVictory(int x,int y,int chess, int[][] cross, int boardSize ) {
+        //横向判断
+        int trans = 0;
+        for(int i = x-4; i < x+5 ; i++) {
+            if(i < 0 || i >= boardSize+1) continue;
+            if(cross[i][y] == chess) {
+                trans++;
+            }
+            else {
+                trans = 0;
+            }
+            if(trans == 5) return chess;
+        }
+        //纵向判断
+        int longi = 0;
+        for(int i = y-4 ; i < y+5 ; i++) {
+            if(i < 0 || i >= boardSize+1) continue;
+            if(cross[x][i] == chess) {
+                longi++;
+            }
+            else {
+                longi=0;
+            }
+            if(longi == 5) return chess;
+        }
+        //从左上到右下
+        int leftUPToDown = 0;
+        for(int i = x-4, j = y+4 ; i < x+5 && j > y-5 ; i++, j--) {
+            if(i < 0 || i >= boardSize+1 || j < 0 || j >= boardSize+1) continue;
+            if(cross[i][j] == chess) {
+                leftUPToDown++;
+            }else {
+                leftUPToDown=0;
+            }
+            if(leftUPToDown == 5) return chess;
+        }
+        //从左下到右上
+        int leftDownToUP = 0;
+        for(int i = x+4, j = y+4; i > x-5 && j > y-5; i--, j--) {
+            if(i < 0 || i >= boardSize+1 || j < 0 || j >= boardSize+1) continue;
+            if(cross[i][j] == chess) {
+                leftDownToUP++;
+            }else {
+                leftDownToUP=0;
+            }
+            if(leftDownToUP == 5) return chess;
+        }
+        return 0;
+    }
+    //以上五个为棋盘操作函数
+
+}
