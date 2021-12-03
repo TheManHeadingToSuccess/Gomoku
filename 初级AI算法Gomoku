@@ -1,0 +1,208 @@
+public static void computerFindBestPlaceAndPutDownAChess( int boardSize, int[][] cross, ArrayList<chess> list ) {
+        int[][] score = new int[boardSize+1][boardSize+1];
+        for ( int i = 1; i < boardSize+1; i++ ) {
+            for ( int j = 1; j < boardSize+1; j++ ) {
+                score[i][j] = 0;
+            }
+        }
+
+        int humanChessNumber = 0;
+        int computerChessNumber = 0;
+        int quintupletScore = 0;
+
+        int bestX = 0;
+        int bestY = 0;
+        int maxScore = 0;
+//横向
+        for(int i = 1; i < boardSize+1; i++){
+            for(int j = 1; j < boardSize-3; j++){
+                for ( int k = j; k < j+5; k++ ) {
+                    if(cross[i][k] == 1) computerChessNumber++;
+                    else if(cross[i][k] == 2) humanChessNumber++;
+                }
+
+                quintupletScore = calculateScore( humanChessNumber, computerChessNumber );
+                //为该五元组的每个位置添加分数
+                for(int k = j; k < j + 5; k++) {
+                    score[i][k] += quintupletScore;
+                }
+                //置零
+                humanChessNumber = 0;//五元组中的黑棋数量
+                computerChessNumber = 0;//五元组中的白棋数量
+                quintupletScore = 0;//五元组得分临时变量
+            }
+        }
+//纵向
+        for(int i = 1; i < boardSize+1; i++){
+            for(int j = 1; j < boardSize-3; j++){
+                for ( int k = j; k < j+5; k++ ) {
+                    if(cross[k][i] == 1) computerChessNumber++;
+                    else if(cross[k][i] == 2) humanChessNumber++;
+                }
+
+                quintupletScore = calculateScore( humanChessNumber, computerChessNumber );
+                //为该五元组的每个位置添加分数
+                for(int k = j; k < j + 5; k++) {
+                    score[k][i] += quintupletScore;
+                }
+                //置零
+                humanChessNumber = 0;//五元组中的黑棋数量
+                computerChessNumber = 0;//五元组中的白棋数量
+                quintupletScore = 0;//五元组得分临时变量
+            }
+        }
+//右上
+        for(int i = boardSize; i >= 5; i--){
+            for(int j = 1, k = i; j < boardSize+1 && k >= 1; j++, k--){
+                for ( int m = k, n = j; m > k-5 && k-5 >= 0; m--, n++ ) {
+                    if(cross[m][n] == 1) computerChessNumber++;
+                    else if(cross[m][n] == 2) humanChessNumber++;
+                }
+
+                //注意斜向判断的时候，可能构不成五元组（靠近四个角落），遇到这种情况要忽略掉
+                int m = k;
+                int n = j;
+                if(m == k-5){
+                    quintupletScore = calculateScore( humanChessNumber, computerChessNumber );
+                //为该五元组的每个位置添加分数
+                for(m = k, n = j; m > k-5; m--, n++) {
+                    score[m][n] += quintupletScore;
+                }
+                }
+                //置零
+                humanChessNumber = 0;//五元组中的黑棋数量
+                computerChessNumber = 0;//五元组中的白棋数量
+                quintupletScore = 0;//五元组得分临时变量
+            }
+        }
+//左下
+        for(int i = 2; i < boardSize+1; i++){
+            for(int j = boardSize, k = i; j >= 1 && k < boardSize+1; j--, k++){
+                for ( int m = k, n = j; m < k+5 && k+5 <= boardSize+1; m++, n-- ) {
+                    if(cross[n][m] == 1) computerChessNumber++;
+                    else if(cross[n][m] == 2) humanChessNumber++;
+                }
+
+                //注意斜向判断的时候，可能构不成五元组（靠近四个角落），遇到这种情况要忽略掉
+                int m = k;
+                int n = j;
+                if(m == k+5){
+                    quintupletScore = calculateScore( humanChessNumber, computerChessNumber );
+                    //为该五元组的每个位置添加分数
+                    for(m = k, n = j; m < k+5; m++, n--) {
+                        score[n][m] += quintupletScore;
+                    }
+                }
+                //置零
+                humanChessNumber = 0;//五元组中的黑棋数量
+                computerChessNumber = 0;//五元组中的白棋数量
+                quintupletScore = 0;//五元组得分临时变量
+            }
+        }
+//左上
+        for(int i = 1; i < boardSize-3; i++){
+            for(int j = 1, k = i; j < boardSize+1 && k < boardSize+1; j++, k++){
+                for ( int m = k, n = j; m < k+5 && k+5 <= boardSize+1; m++, n++ ) {
+                    if(cross[m][n] == 1) computerChessNumber++;
+                    else if(cross[m][n] == 2) humanChessNumber++;
+                }
+
+                //注意斜向判断的时候，可能构不成五元组（靠近四个角落），遇到这种情况要忽略掉
+                int m = k;
+                int n = j;
+                if(m == k+5){
+                    quintupletScore = calculateScore( humanChessNumber, computerChessNumber );
+                    //为该五元组的每个位置添加分数
+                    for(m = k, n = j; m < k+5; m++, n++) {
+                        score[m][n] += quintupletScore;
+                    }
+                }
+                //置零
+                humanChessNumber = 0;//五元组中的黑棋数量
+                computerChessNumber = 0;//五元组中的白棋数量
+                quintupletScore = 0;//五元组得分临时变量
+            }
+        }
+//右下
+        for(int i = 2; i < boardSize-3; i++){
+            for(int j = 1, k = i; j < boardSize+1 && k < boardSize+1; j++, k++){
+                for ( int m = k, n = j; m < k+5 && k+5 <= boardSize+1; m++, n++ ) {
+                    if(cross[n][m] == 1) computerChessNumber++;
+                    else if(cross[n][m] == 2) humanChessNumber++;
+                }
+
+                //注意斜向判断的时候，可能构不成五元组（靠近四个角落），遇到这种情况要忽略掉
+                int m = k;
+                int n = j;
+                if(m == k+5){
+                    quintupletScore = calculateScore( humanChessNumber, computerChessNumber );
+                    //为该五元组的每个位置添加分数
+                    for(m = k, n = j; m < k+5; m++, n++) {
+                        score[n][m] += quintupletScore;
+                    }
+                }
+                //置零
+                humanChessNumber = 0;//五元组中的黑棋数量
+                computerChessNumber = 0;//五元组中的白棋数量
+                quintupletScore = 0;//五元组得分临时变量
+            }
+        }
+
+        for(int i = 1; i < boardSize+1; i++){
+            for(int j = 1; j < boardSize+1; j++){
+                if(cross[i][j] == 0 && score[i][j] > maxScore){
+                    bestX = i;
+                    bestY = j;
+                    maxScore = score[i][j];
+                }
+            }
+        }
+
+        if ( bestX > 0 && bestY > 0 && CanInput( cross[bestX][bestY] ) ) {
+            cross[bestX][bestY] = 1;
+            list.add( new chess( bestX, bestY, 1 ) );
+        }
+    }
+    public static int calculateScore( int humanChessNumber, int computerChessNumber ) {
+        //1.既有人类落子，又有机器落子，判分为0
+        if(humanChessNumber > 0 && computerChessNumber > 0){
+            return 0;
+        }
+        //2.全部为空，没有落子，判分为7
+        if(humanChessNumber == 0 && computerChessNumber == 0){
+            return 7;
+        }
+        //3.机器落1子，判分为35
+        if(computerChessNumber == 1){
+            return 35;
+        }
+        //4.机器落2子，判分为800
+        if(computerChessNumber == 2){
+            return 800;
+        }
+        //5.机器落3子，判分为15000
+        if(computerChessNumber == 3){
+            return 15000;
+        }
+        //6.机器落4子，判分为800000
+        if(computerChessNumber == 4){
+            return 800000;
+        }
+        //7.人类落1子，判分为15
+        if(humanChessNumber == 1){
+            return 15;
+        }
+        //8.人类落2子，判分为400
+        if(humanChessNumber == 2){
+            return 400;
+        }
+        //9.人类落3子，判分为18000
+        if(humanChessNumber == 3){
+            return 18000;
+        }
+        //10.人类落4子，判分为1000000
+        if(humanChessNumber == 4){
+            return 1000000;
+        }
+        return -1;//若是其他结果肯定出错了。这行代码根本不可能执行
+    }
