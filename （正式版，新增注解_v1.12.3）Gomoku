@@ -1,0 +1,1424 @@
+import java.awt.*;
+import java.util.ArrayList;
+
+class chess {                       //chess类，参数为坐标，后面悔棋时用
+    private final int x;
+    private final int y;
+
+    chess(int x, int y) {           //constructor
+        this.x = x;
+        this.y = y;
+    }
+
+    public int getX() {
+        return x;
+    } //分别获取横、纵坐标
+    public int getY() {
+        return y;
+    }
+}
+public class NewGomoku4 {
+    public static void main(String[] args) {
+        startGomoku();                        //启动游戏
+    }
+    public static void startGomoku() {        //启动游戏函数
+        StdDraw.clear();
+        StdDraw.enableDoubleBuffering();
+        int switcher;                         //声明开关
+        formFirstGUI();                       //显示首页
+        while ( true ) {                      //实现鼠标实时监听
+
+            do {
+                switcher = 0;
+                while ( StdDraw.isMousePressed() ) {
+                    if ( clickButtonToChooseMode(1) ) switcher = 1;
+                    if ( clickButtonToChooseMode(2) ) switcher = 2;
+                    if ( clickButtonToExit1() ) System.exit(0);
+                }
+            } while ( switcher == 0 );         //选择模式：1——PVP；2——PVC
+
+            switch ( switcher ) {
+                case 1 :
+                    chooseSizeGUI();           //显示选择棋盘规格界面
+                    do {
+                        switcher = 0;
+                        while (StdDraw.isMousePressed()) {
+                            if ( clickButtonToFormSize(15) ) switcher = 11;
+                            if ( clickButtonToFormSize(17) ) switcher = 12;
+                            if ( clickButtonToFormSize(19) ) switcher = 13;
+                        }
+                    } while ( switcher == 0 );  //选择不同的棋盘规格 11-15*15 12-17*17 13-19*19
+
+                    switch ( switcher ) {
+                        case 11 :
+                            gamePVP( 15 );
+                        case 12 :
+                            gamePVP( 17 );
+                        case 13 :
+                            gamePVP( 19 );
+                    }  //开始游戏
+                case 2 :
+                    chooseSizeGUI();            //显示选择棋盘规格界面
+                    do {
+                        switcher = 0;
+                        while (StdDraw.isMousePressed()) {
+                            if ( clickButtonToFormSize(15) ) switcher = 21;
+                            if ( clickButtonToFormSize(17) ) switcher = 22;
+                            if ( clickButtonToFormSize(19) ) switcher = 23;
+                        }
+                    } while ( switcher == 0 );  //选择不同的棋盘规格
+
+                    switch ( switcher ) {
+                        case 21 :
+                            chooseColorGUI();   //选择棋子颜色界面
+                            do {
+                                switcher = 0;
+                                while ( StdDraw.isMousePressed() ) {
+                                    if ( clickButtonToChooseMode(1) ) switcher = 1;
+                                    if ( clickButtonToChooseMode(2) ) switcher = 2;
+                                }
+                            } while ( switcher == 0 );    //选择棋子颜色 1-黑 2-白
+
+                            switch ( switcher ) {
+                                case 1:
+                                    gamePVC1( 15 );  //计算机执白
+                                case 2:
+                                    gamePVC2( 15 );  //计算机执黑
+                            }
+
+                        case 22 :
+                            chooseColorGUI();
+                            do {
+                                switcher = 0;
+                                while ( StdDraw.isMousePressed() ) {
+                                    if ( clickButtonToChooseMode(1) ) switcher = 1;
+                                    if ( clickButtonToChooseMode(2) ) switcher = 2;
+                                }
+                            } while ( switcher == 0 );
+
+                            switch ( switcher ) {
+                                case 1:
+                                    gamePVC1( 17 );
+                                case 2:
+                                    gamePVC2( 17 );
+                            }                                  //棋盘规格不同，其余大同小异
+
+                        case 23 :
+                            chooseColorGUI();
+                            do {
+                                switcher = 0;
+                                while ( StdDraw.isMousePressed() ) {
+                                    if ( clickButtonToChooseMode(1) ) switcher = 1;
+                                    if ( clickButtonToChooseMode(2) ) switcher = 2;
+                                }
+                            } while ( switcher == 0 );
+
+                            switch ( switcher ) {
+                                case 1:
+                                    gamePVC1( 19 );
+                                case 2:
+                                    gamePVC2( 19 );
+                            }                                   //棋盘规格不同，其余大同小异
+                    }
+            }
+        }
+    }
+    //以上为开始游戏函数
+
+    public static void gamePVP( int boardSize ) {  //人人对战函数
+
+        ArrayList<chess> undo = new ArrayList<>();  //创建ArrayList, 便于悔棋(其实堆栈Stack也行)
+        int countUndoBlack = 0;                     //分别记各色棋子的悔棋次数，默认最多悔棋五次
+        int countUndoWhite = 0;
+        int judgment;
+        int switcher;
+        formBoard(boardSize);                       //显示棋盘
+
+        int[][] cross = new int[2*boardSize + 1][2*boardSize + 1];    //扩大数组范围，谨防越界
+        for (int i = 1; i < boardSize + 1; i++) {                     //从1-面板大小，没有从零开始，这样方便记忆坐标
+            for (int j = 1; j < boardSize + 1; j++) {
+                cross[i][j] = 0;                                      //初始化棋盘数组，不放棋子为0，黑为1，白为-1
+            }
+        }
+        int color = 1;   //初始先手执黑
+
+        while (true) {        //开始监听
+
+            if ( StdDraw.isMousePressed() &&
+                (int) Math.round(StdDraw.mouseX()) <= (boardSize + 1) &&
+                (int) Math.round(StdDraw.mouseY()) <= (boardSize + 1)
+            )         //如果在棋盘范围内点击
+            {
+                do {
+                    switcher = 0;   //开关初始为0
+                    while (StdDraw.isMousePressed()) {
+
+                        if ( canInput(cross[(int) Math.round(StdDraw.mouseY())][(int) Math.round(StdDraw.mouseX())])
+                        ) {    //判断是否可以放棋子（是否为空）
+                            cross[(int) Math.round(StdDraw.mouseY())][(int) Math.round(StdDraw.mouseX())] = color;
+                            chess aChess = new chess((int) Math.round(StdDraw.mouseX()), (int) Math.round(StdDraw.mouseY())
+                            );
+                            undo.add(aChess);  //能放就把数组相应赋值，并在悔棋数列组中添加
+                            if (color == -1) {
+                                color += 2;
+                            } else if (color == 1) {
+                                color -= 2;
+                            }  //放完后切换颜色
+                        }
+
+                        if ( isForbiddenMove( (int) Math.round(StdDraw.mouseY()), (int) Math.round(StdDraw.mouseX()),
+                                cross, boardSize )
+                        )
+                        {
+                            forbiddenMove( cross, undo, boardSize );
+                            color = 1;
+                        }  //判断是否是禁手，是，就禁手并且下一步黑棋重下
+
+                        for (int i = 1; i < boardSize + 1; i++) {
+                            for (int j = 1; j < boardSize + 1; j++) {
+
+                                if (cross[i][j] == -1) {
+                                    StdDraw.setPenColor(Color.WHITE);
+                                    StdDraw.filledCircle(j, i, 0.4);
+                                    StdDraw.show();
+
+                                }
+                                if (cross[i][j] == 1) {
+                                    StdDraw.setPenColor(Color.BLACK);
+                                    StdDraw.filledCircle(j, i, 0.4);
+                                    StdDraw.show();
+
+                                }      //画棋子
+
+                                judgment = checkVictory(j, i, -1, cross, boardSize);
+                                if (judgment == -1) {
+                                    victoryGUI(-1);
+                                    do {
+                                        switcher = 3;
+                                        while (StdDraw.isMousePressed()) {
+                                            if (clickButtonToExit2()) switcher = 31;
+                                            if (clickButtonToPlayAgain()) switcher = 32;
+                                        }
+                                    } while (switcher == 3);
+                                }
+                                judgment = checkVictory(j, i, 1, cross, boardSize);
+                                if (judgment == 1) {
+                                    victoryGUI(1);
+                                    do {
+                                        switcher = 3;
+                                        while (StdDraw.isMousePressed()) {
+                                            if (clickButtonToExit2()) switcher = 31;
+                                            if (clickButtonToPlayAgain()) switcher = 32;
+                                        }
+                                    } while (switcher == 3);
+                                }      //分别查看黑子白子是否成五子
+
+                                switch (switcher) {
+                                    case 31:
+                                        if (judgment == 1) {
+                                            System.out.println("GAME OVER. BLACK WINS.");
+                                        } else {
+                                            System.out.println("GAME OVER. WHITE WINS.");
+                                        }
+                                        System.exit(0);
+                                    case 32:
+                                        startGomoku();
+                                }      //输赢结果显示，并退出
+
+                            }
+                        }
+                        switcher = 1;
+                    }
+
+                } while (switcher == 1);  //开关扳到1，只有进行完以上所有操作才能继续进行循环
+            }
+            else if ( StdDraw.isMousePressed() && clickButtonToUndo( boardSize) ){    //如果点击悔棋按钮
+                do {
+                    switcher = 4;
+                    while ( StdDraw.isMousePressed() ) {
+                        if ( clickButtonToUndo( boardSize) )
+                            switcher = 5;
+                    }
+
+                    if ( switcher == 5 && canUndo( undo ) ) {   //若能够悔棋（棋盘上有棋）
+                        chess former = undo.get( undo.size() - 1 );
+                        int x = former.getX();
+                        int y = former.getY();                  //取得最后一个放的坐标
+
+                        undo.remove( undo.size() - 1 );   //从list中移除
+                        cross[y][x] = 0;                        //初始化为零
+                        showBoard( boardSize, cross );          //重画棋子
+                        if (color == -1) {                      //****重点：如果现在拿着的是白子，说明刚放的是黑子，撤回黑子的次数+1
+                            color += 2;                         //换回颜色，以便重放
+                            countUndoBlack++;
+                            if ( countUndoBlack <= 5 )
+                                undoTitle( boardSize, countUndoBlack, 1 ); //悔棋提示剩余次数
+                            else foulTittle( boardSize, cross );  //若超过最大次数，提示犯规
+                        }
+                        else if (color == 1) {                  //同上
+                            color -= 2;
+                            countUndoWhite++;
+                            if ( countUndoWhite <= 5 )
+                                undoTitle( boardSize, countUndoWhite, -1 );
+                            else foulTittle( boardSize, cross );
+                        }
+                    }
+                } while ( switcher == 5 );
+            }
+        }
+    }
+    //以上为人人对战函数
+
+    public static void gamePVC1( int boardSize ) { //人机对战函数1---计算机执白
+
+        ArrayList<chess> undo = new ArrayList<>();  //绝大部分与人人对战函数无异
+        int countUndoBlack = 0;
+        int countUndoWhite = 0;
+        int judgment;
+        int switcher;
+        formBoard(boardSize);
+
+        int[][] cross = new int[2*boardSize + 1][2*boardSize + 1];
+        for (int i = 1; i < boardSize + 1; i++) {
+            for (int j = 1; j < boardSize + 1; j++) {
+                cross[i][j] = 0;
+            }
+        }
+        int color = 1;
+
+        while (true) {
+
+            if ( StdDraw.isMousePressed() &&
+                    (int) Math.round(StdDraw.mouseX()) <= (boardSize + 1) &&
+                    (int) Math.round(StdDraw.mouseY()) <= (boardSize + 1)
+            )
+            {
+
+                do {
+                    switcher = 0;
+                    while (StdDraw.isMousePressed()) {
+
+                        if ( canInput(cross[(int) Math.round(StdDraw.mouseY())][(int) Math.round(StdDraw.mouseX())])
+                        ) {
+                            cross[(int) Math.round(StdDraw.mouseY())][(int) Math.round(StdDraw.mouseX())] = color;
+                            chess aChess = new chess((int) Math.round(StdDraw.mouseX()), (int) Math.round(StdDraw.mouseY())
+                            );
+                            undo.add(aChess);
+
+                            computerFindBestPlaceAndPutDownAChess( boardSize, cross, undo, -1 ); //人先放了机器再放
+                        }
+
+                        if ( isForbiddenMove( (int) Math.round(StdDraw.mouseY()), (int) Math.round(StdDraw.mouseX()),
+                                cross, boardSize )
+                        )
+                        {
+                            forbiddenMove( cross, undo, boardSize );
+                        }
+
+                        for (int i = 1; i < boardSize + 1; i++) {
+                            for (int j = 1; j < boardSize + 1; j++) {
+
+                                if (cross[i][j] == -1) {
+                                    StdDraw.setPenColor(Color.WHITE);
+                                    StdDraw.filledCircle(j, i, 0.4);
+                                    StdDraw.show();
+
+                                }
+                                if (cross[i][j] == 1) {
+                                    StdDraw.setPenColor(Color.BLACK);
+                                    StdDraw.filledCircle(j, i, 0.4);
+                                    StdDraw.show();
+
+                                }
+
+                                judgment = checkVictory(j, i, -1, cross, boardSize);
+                                if (judgment == -1) {
+                                    victoryGUI(-1);
+                                    do {
+                                        switcher = 3;
+                                        while (StdDraw.isMousePressed()) {
+                                            if (clickButtonToExit2()) switcher = 31;
+                                            if (clickButtonToPlayAgain()) switcher = 32;
+                                        }
+                                    } while (switcher == 3);
+                                }
+                                judgment = checkVictory(j, i, 1, cross, boardSize);
+                                if (judgment == 1) {
+                                    victoryGUI(1);
+                                    do {
+                                        switcher = 3;
+                                        while (StdDraw.isMousePressed()) {
+                                            if (clickButtonToExit2()) switcher = 31;
+                                            if (clickButtonToPlayAgain()) switcher = 32;
+                                        }
+                                    } while (switcher == 3);
+                                }
+
+                                switch (switcher) {
+                                    case 31:
+                                        if (judgment == 1) {
+                                            System.out.println("GAME OVER. BLACK WINS.");
+                                        } else {
+                                            System.out.println("GAME OVER. WHITE WINS.");
+                                        }
+                                        System.exit(0);
+                                    case 32:
+                                        startGomoku();
+                                }
+
+                            }
+                        }
+                        switcher = 1;
+                    }
+
+                } while (switcher == 1);
+            }
+            else if ( StdDraw.isMousePressed() && clickButtonToUndo( boardSize) ){
+                do {
+                    switcher = 4;
+                    while ( StdDraw.isMousePressed() ) {
+                        if ( clickButtonToUndo( boardSize) )
+                            switcher = 5;
+                    }
+
+                    if ( switcher == 5 && canUndo( undo ) ) {
+                        chess former = undo.get( undo.size() - 1 );
+                        int x = former.getX();
+                        int y = former.getY();
+
+                        undo.remove( undo.size() - 1 );
+                        cross[y][x] = 0;
+                        showBoard( boardSize, cross );
+                        if (color == -1) {
+                            color += 2;
+                            countUndoBlack++;
+                            if ( countUndoBlack <= 5 )
+                                undoTitle( boardSize, countUndoBlack, 1 );
+                            else foulTittle( boardSize, cross );
+                        }
+                        else if (color == 1) {
+                            color -= 2;
+                            countUndoWhite++;
+                            if ( countUndoWhite <= 5 )
+                                undoTitle( boardSize, countUndoWhite, -1 );
+                            else foulTittle( boardSize, cross );
+                        }
+                    }
+                } while ( switcher == 5 );
+            }
+        }
+    }
+
+    public static void gamePVC2( int boardSize ) { //人机对战函数2---机器先手执黑（其余大同小异）
+
+        ArrayList<chess> undo = new ArrayList<>();
+        int countUndoBlack = 0;
+        int countUndoWhite = 0;
+
+        formBoard2(boardSize);  //**为了营造效果，初始化棋盘时就在最中心放上黑子，相当于机器先下了一步（注：中心称为天元，占据天元者有利于把控全局）
+
+        int[][] cross = new int[2*boardSize + 1][2*boardSize + 1];
+        for (int i = 1; i < boardSize + 1; i++) {
+            for (int j = 1; j < boardSize + 1; j++) {
+                cross[i][j] = 0;
+            }
+        }
+        cross[(boardSize+1)/2][(boardSize+1)/2] = 1;
+        int color = -1;
+        int judgment;
+        int switcher;
+        while (true) {
+
+            if ( StdDraw.isMousePressed() &&
+                    (int) Math.round(StdDraw.mouseX()) <= (boardSize + 1) &&
+                    (int) Math.round(StdDraw.mouseY()) <= (boardSize + 1)
+            )
+            {
+
+                do {
+                    switcher = 0;
+                    while (StdDraw.isMousePressed()) {
+
+                        if ( canInput(cross[(int) Math.round(StdDraw.mouseY())][(int) Math.round(StdDraw.mouseX())])
+                        ) {
+                            cross[(int) Math.round(StdDraw.mouseY())][(int) Math.round(StdDraw.mouseX())] = color;
+                            chess aChess = new chess((int) Math.round(StdDraw.mouseX()), (int) Math.round(StdDraw.mouseY())
+                            );
+                            undo.add(aChess);
+
+                            computerFindBestPlaceAndPutDownAChess( boardSize, cross, undo, 1 );
+                        }
+
+                        if ( isForbiddenMove( (int) Math.round(StdDraw.mouseY()), (int) Math.round(StdDraw.mouseX()),
+                                cross, boardSize )
+                        )
+                        {
+                            forbiddenMove( cross, undo, boardSize );
+                            color = 1;
+                        }
+
+                        for (int i = 1; i < boardSize + 1; i++) {
+                            for (int j = 1; j < boardSize + 1; j++) {
+
+                                if (cross[i][j] == -1) {
+                                    StdDraw.setPenColor(Color.WHITE);
+                                    StdDraw.filledCircle(j, i, 0.4);
+                                    StdDraw.show();
+
+                                }
+                                if (cross[i][j] == 1) {
+                                    StdDraw.setPenColor(Color.BLACK);
+                                    StdDraw.filledCircle(j, i, 0.4);
+                                    StdDraw.show();
+
+                                }
+
+                                judgment = checkVictory(j, i, -1, cross, boardSize);
+                                if (judgment == -1) {
+                                    victoryGUI(-1);
+                                    do {
+                                        switcher = 3;
+                                        while (StdDraw.isMousePressed()) {
+                                            if (clickButtonToExit2()) switcher = 31;
+                                            if (clickButtonToPlayAgain()) switcher = 32;
+                                        }
+                                    } while (switcher == 3);
+                                }
+                                judgment = checkVictory(j, i, 1, cross, boardSize);
+                                if (judgment == 1) {
+                                    victoryGUI(1);
+                                    do {
+                                        switcher = 3;
+                                        while (StdDraw.isMousePressed()) {
+                                            if (clickButtonToExit2()) switcher = 31;
+                                            if (clickButtonToPlayAgain()) switcher = 32;
+                                        }
+                                    } while (switcher == 3);
+                                }
+
+                                switch (switcher) {
+                                    case 31:
+                                        if (judgment == 1) {
+                                            System.out.println("GAME OVER. BLACK WINS.");
+                                        } else {
+                                            System.out.println("GAME OVER. WHITE WINS.");
+                                        }
+                                        System.exit(0);
+                                    case 32:
+                                        startGomoku();
+                                }
+
+                            }
+                        }
+                        switcher = 1;
+                    }
+
+                } while (switcher == 1);
+            }
+            else if ( StdDraw.isMousePressed() && clickButtonToUndo( boardSize) ){
+                do {
+                    switcher = 4;
+                    while ( StdDraw.isMousePressed() ) {
+                        if ( clickButtonToUndo( boardSize) )
+                            switcher = 5;
+                    }
+
+                    if ( switcher == 5 && canUndo( undo ) ) {
+                        chess former = undo.get( undo.size() - 1 );
+                        int x = former.getX();
+                        int y = former.getY();
+
+                        undo.remove( undo.size() - 1 );
+                        cross[y][x] = 0;
+                        showBoard( boardSize, cross );
+                        if (color == -1) {
+                            color += 2;
+                            countUndoBlack++;
+                            if ( countUndoBlack <= 5 )
+                                undoTitle( boardSize, countUndoBlack, 1 );
+                            else foulTittle( boardSize, cross );
+                        }
+                        else if (color == 1) {
+                            color -= 2;
+                            countUndoWhite++;
+                            if ( countUndoWhite <= 5 )
+                                undoTitle( boardSize, countUndoWhite, -1 );
+                            else foulTittle( boardSize, cross );
+                        }
+                    }
+                } while ( switcher == 5 );
+            }
+        }
+    }
+
+    public static void formFirstGUI() {  //画首页
+        StdDraw.clear();
+        StdDraw.setPenColor(StdDraw.BLACK);
+        final Font title = new Font("SansSerif", Font.BOLD, 40);  //以下三个调整艺术字
+        final Font button = new Font("SansSerif", Font.PLAIN, 20);
+        final Font exit = new Font("SansSerif", Font.PLAIN, 15);
+
+        StdDraw.setFont( title );
+        StdDraw.text( 0.5, 0.8, "Gomoku" );                       //显示标题“GOMOKU”
+        //Make Button1.
+        StdDraw.setPenColor( 0, 0, 170 );  //按钮1
+        StdDraw.filledRectangle( 0.5, 0.6, 0.2, 0.075 );
+        StdDraw.filledCircle( 0.3, 0.6, 0.075 );
+        StdDraw.filledCircle( 0.7, 0.6, 0.075 );
+        StdDraw.setFont( button );
+        StdDraw.setPenColor( 255, 255, 255 );
+        StdDraw.text( 0.5, 0.6, "Play With People" );
+        //Make Button2.
+        StdDraw.setPenColor( 0, 0, 170 ); //按钮2
+        StdDraw.filledRectangle( 0.5, 0.4, 0.2, 0.075 );
+        StdDraw.filledCircle( 0.3, 0.4, 0.075 );
+        StdDraw.filledCircle( 0.7, 0.4, 0.075 );
+        StdDraw.setFont( button );
+        StdDraw.setPenColor( 255, 255, 255 );
+        StdDraw.text( 0.5, 0.40, "Play With Computer" );
+        //Make Exit button.
+        StdDraw.setPenColor( 204, 34, 0 );  //退出游戏按钮
+        StdDraw.filledRectangle( 0.9, 0.05, 0.05, 0.03 );
+        StdDraw.filledCircle( 0.85, 0.05, 0.03 );
+        StdDraw.filledCircle( 0.95, 0.05, 0.03 );
+        StdDraw.setFont( exit );
+        StdDraw.setPenColor( 255, 255, 255 );
+        StdDraw.text( 0.9, 0.05, "Exit" );
+        //Top left decoration.
+        StdDraw.setPenColor( 0, 0, 170 );  //左上角装饰
+        double[] triangleX = { 0.0, 0.0, 0.1 };
+        double[] triangleY = { 0.9, 1.0, 1.0 };
+        StdDraw.filledPolygon( triangleX, triangleY );
+        //Edition.
+        StdDraw.setFont( exit );  //显示版本号
+        StdDraw.setPenColor(128, 128, 128);
+        StdDraw.text( 0.15, 0.03, "1.12.3.111921_beta" );
+        StdDraw.show();
+    }
+    public static void chooseSizeGUI() {            //选择棋盘大小界面
+        StdDraw.clear();
+        final Font title = new Font("SansSerif", Font.BOLD, 40);
+        final Font button = new Font("SansSerif", Font.PLAIN, 20);
+
+        StdDraw.setFont(title);
+        StdDraw.setPenColor(StdDraw.BLACK);
+        StdDraw.text(0.5, 0.8, "Choose Board Size");  //标题
+        //Make subButton1.
+        StdDraw.setPenColor(0, 0, 170);  //以下三个为按钮
+        StdDraw.filledRectangle(0.5, 0.6, 0.2, 0.075);
+        StdDraw.filledCircle(0.3, 0.6, 0.075);
+        StdDraw.filledCircle(0.7, 0.6, 0.075);
+        StdDraw.setFont(button);
+        StdDraw.setPenColor(255, 255, 255);
+        StdDraw.text(0.5, 0.6, "15 × 15");
+        //Make subButton2.
+        StdDraw.setPenColor(0, 0, 170);
+        StdDraw.filledRectangle(0.5, 0.4, 0.2, 0.075);
+        StdDraw.filledCircle(0.3, 0.4, 0.075);
+        StdDraw.filledCircle(0.7, 0.4, 0.075);
+        StdDraw.setFont(button);
+        StdDraw.setPenColor(255, 255, 255);
+        StdDraw.text(0.5, 0.40, "17 × 17");
+        //Make subButton3.
+        StdDraw.setPenColor(0, 0, 170);
+        StdDraw.filledRectangle(0.5, 0.2, 0.2, 0.075);
+        StdDraw.filledCircle(0.3, 0.2, 0.075);
+        StdDraw.filledCircle(0.7, 0.2, 0.075);
+        StdDraw.setFont(button);
+        StdDraw.setPenColor(255, 255, 255);
+        StdDraw.text(0.5, 0.2, "19 × 19");
+
+        StdDraw.show();
+    }
+
+    public static void chooseColorGUI() {         //选择棋子颜色函数
+        StdDraw.clear();
+        StdDraw.setPenColor(StdDraw.BLACK);
+        final Font title = new Font("SansSerif", Font.BOLD, 30);
+        final Font button = new Font("SansSerif", Font.PLAIN, 20);
+
+        StdDraw.setFont( title );
+        StdDraw.text( 0.5, 0.8, "You can choose chess color." );
+        //Make Button1.
+        StdDraw.setPenColor( 0, 0, 170 );
+        StdDraw.filledRectangle( 0.5, 0.6, 0.2, 0.075 );
+        StdDraw.filledCircle( 0.3, 0.6, 0.075 );
+        StdDraw.filledCircle( 0.7, 0.6, 0.075 );
+        StdDraw.setFont( button );
+        StdDraw.setPenColor( 255, 255, 255 );
+        StdDraw.text( 0.5, 0.6, "I want BLACK." );
+        //Make Button2.
+        StdDraw.setPenColor( 0, 0, 170 );
+        StdDraw.filledRectangle( 0.5, 0.4, 0.2, 0.075 );
+        StdDraw.filledCircle( 0.3, 0.4, 0.075 );
+        StdDraw.filledCircle( 0.7, 0.4, 0.075 );
+        StdDraw.setFont( button );
+        StdDraw.setPenColor( 255, 255, 255 );
+        StdDraw.text( 0.5, 0.40, "I want WHITE." );
+
+        StdDraw.show();
+    }
+    public static void formBoard ( int boardSize ) {  //构建普通棋盘
+        StdDraw.clear();
+        StdDraw.setCanvasSize(640, 640);
+        StdDraw.setXscale( 0, (boardSize + 1)*( 1.0 + 1.0/4.0 ) );
+        StdDraw.setYscale( 0, (boardSize + 1)*( 1.0 + 1.0/4.0 ) );
+        StdDraw.clear();
+        StdDraw.setPenColor( 120, 120, 120 );
+        StdDraw.filledSquare( (boardSize+1)/2.0, (boardSize+1)/2.0, (boardSize+1)/2.0 ); //填充背景
+        StdDraw.setPenColor( StdDraw.BLACK );
+        for (int i = 0 ; i < boardSize+1; i++) {
+            StdDraw.line(i, boardSize+1, i, 0);
+            StdDraw.line(boardSize+1, i, 0, i);  //划线
+        }
+
+        final Font exit = new Font("SansSerif", Font.PLAIN, 15);
+        StdDraw.setPenColor( 204, 34, 0 );
+        StdDraw.filledRectangle( 0.9*(boardSize + 1)*( 1.0 + 1.0/4.0 ),
+                0.05*(boardSize + 1),
+                0.05*(boardSize + 1)*( 1.0 + 1.0/4.0 ), 0.03*(boardSize + 1) );
+        StdDraw.filledCircle( 0.85*(boardSize + 1)*( 1.0 + 1.0/4.0 ),
+                0.05*(boardSize + 1), 0.03*(boardSize + 1) );
+        StdDraw.filledCircle( 0.95*(boardSize + 1)*( 1.0 + 1.0/4.0 ),
+                0.05*(boardSize + 1), 0.03*(boardSize + 1) );
+        StdDraw.setFont( exit );
+        StdDraw.setPenColor( 255, 255, 255 );
+        StdDraw.text( 0.9*(boardSize + 1)*( 1.0 + 1.0/4.0 ), 0.05*(boardSize + 1), "Undo" ); //画按钮
+
+        StdDraw.setPenColor( Color.white );
+        StdDraw.filledRectangle( 0.5*( boardSize+1 ), 1.125*( boardSize+1 )*( 1.0 + 1.0/4.0 ),
+                0.4*( boardSize+1 ),
+                0.125*( boardSize+1 )*( 1.0 + 1.0/4.0 ) );
+
+        StdDraw.show();
+    }
+    public static void formBoard2 ( int boardSize ) {  //构建中心黑子棋盘
+        StdDraw.clear();
+        StdDraw.setCanvasSize(640, 640);
+        StdDraw.setXscale( 0, (boardSize + 1)*( 1.0 + 1.0/4.0 ) );
+        StdDraw.setYscale( 0, (boardSize + 1)*( 1.0 + 1.0/4.0 ) );
+        StdDraw.clear();
+        StdDraw.setPenColor( 120, 120, 120 );
+        StdDraw.filledSquare( (boardSize+1)/2.0, (boardSize+1)/2.0, (boardSize+1)/2.0 );
+        StdDraw.setPenColor( StdDraw.BLACK );
+        for (int i = 0 ; i < boardSize+1; i++) {
+            StdDraw.line(i, boardSize+1, i, 0);
+            StdDraw.line(boardSize+1, i, 0, i);
+        }
+
+        final Font exit = new Font("SansSerif", Font.PLAIN, 15);
+        StdDraw.setPenColor( 204, 34, 0 );
+        StdDraw.filledRectangle( 0.9*(boardSize + 1)*( 1.0 + 1.0/4.0 ),
+                0.05*(boardSize + 1),
+                0.05*(boardSize + 1)*( 1.0 + 1.0/4.0 ), 0.03*(boardSize + 1) );
+        StdDraw.filledCircle( 0.85*(boardSize + 1)*( 1.0 + 1.0/4.0 ),
+                0.05*(boardSize + 1), 0.03*(boardSize + 1) );
+        StdDraw.filledCircle( 0.95*(boardSize + 1)*( 1.0 + 1.0/4.0 ),
+                0.05*(boardSize + 1), 0.03*(boardSize + 1) );
+
+        StdDraw.setPenColor(Color.BLACK);
+        StdDraw.filledCircle((boardSize+1)/2.0 , (boardSize+1)/2.0 , 0.4);
+
+        StdDraw.setFont( exit );
+        StdDraw.setPenColor( 255, 255, 255 );
+        StdDraw.text( 0.9*(boardSize + 1)*( 1.0 + 1.0/4.0 ), 0.05*(boardSize + 1), "Undo" );
+
+        StdDraw.setPenColor( Color.white );
+        StdDraw.filledRectangle( 0.5*( boardSize+1 ), 1.125*( boardSize+1 )*( 1.0 + 1.0/4.0 ),
+                0.4*( boardSize+1 ),
+                0.125*( boardSize+1 )*( 1.0 + 1.0/4.0 ) );
+
+        StdDraw.show();
+    }
+    public static void victoryGUI( int chess ) {  //胜利显示界面
+        final Font button = new Font("SansSerif", Font.PLAIN, 20);
+        final Font title = new Font("SansSerif", Font.BOLD, 40);
+        StdDraw.clear();
+        StdDraw.setCanvasSize(512, 512);
+        StdDraw.setXscale( 0, 1 );
+        StdDraw.setYscale( 0, 1 );
+        if ( chess == -1 ) {
+            StdDraw.setFont( title );
+            StdDraw.setPenColor( 0, 0, 0 );
+            StdDraw.text( 0.5, 0.65,
+                    "Congratulations!" );
+            StdDraw.text( 0.5, 0.55,
+                    "WHITE wins!" );
+        }                                                    //祝贺语
+        if ( chess == 1 ) {
+            StdDraw.setFont( title );
+            StdDraw.setPenColor( 0, 0, 0 );
+            StdDraw.text( 0.5, 0.65,
+                    "Congratulations!" );
+            StdDraw.text( 0.5, 0.55,
+                    "BLACK wins!" );
+        }
+        //Button1.                                            //两个按钮
+        StdDraw.setPenColor(0, 0, 170);
+        StdDraw.filledRectangle( 0.25, 0.25, 0.1, 0.075);
+        StdDraw.filledCircle(0.15, 0.25, 0.075);
+        StdDraw.filledCircle(0.35, 0.25, 0.075);
+        StdDraw.setFont(button);
+        StdDraw.setPenColor(255, 255, 255);
+        StdDraw.text(0.25, 0.25, "PLAY AGAIN");
+        //Button2.
+        StdDraw.setPenColor(204, 34, 0);
+        StdDraw.filledRectangle( 0.75, 0.25, 0.1, 0.075);
+        StdDraw.filledCircle(0.65, 0.25, 0.075);
+        StdDraw.filledCircle(0.85, 0.25, 0.075);
+        StdDraw.setFont(button);
+        StdDraw.setPenColor(255, 255, 255);
+        StdDraw.text(0.75, 0.25, "EXIT");
+        StdDraw.show();
+    }
+    public static void undoTitle( int boardSize, int countUndo, int color ) {   //悔棋标语
+        final Font tips = new Font("SansSerif", Font.BOLD, 28);
+        if ( color == 1 ) {
+            StdDraw.setPenColor( Color.white );
+            StdDraw.filledRectangle( 0.5*( boardSize+1 ), 1.125*( boardSize+1 ),
+                    0.4*( boardSize+1 ),
+                    0.05*( boardSize+1 )*( 1.0 + 1.0/4.0 ) );
+            StdDraw.setPenColor( Color.BLACK );
+            StdDraw.setFont(tips);
+            StdDraw.text( 0.5*( boardSize+1 ), 1.125*( boardSize+1 ),
+                    "You undo! BLACK has " + ( 5 - countUndo ) + " time(s) left." );  //计算并显示剩余次数
+        }
+        else if ( color == -1 ) {
+            StdDraw.setPenColor( Color.white );
+            StdDraw.filledRectangle( 0.5*( boardSize+1 ), 1.125*( boardSize+1 ),
+                    0.4*( boardSize+1 ),
+                    0.05*( boardSize+1 )*( 1.0 + 1.0/4.0 ) );
+            StdDraw.setPenColor( Color.BLACK );
+            StdDraw.setFont(tips);
+            StdDraw.text( 0.5*( boardSize+1 ), 1.125*( boardSize+1 ),
+                    "You undo! WHITE has " + ( 5 - countUndo ) + " time(s) left." );
+        }
+        StdDraw.show();
+    }
+    public static void foulTittle( int boardSize, int[][] cross ) {  //犯规提示函数
+        final Font tips = new Font("SansSerif", Font.BOLD, 25);
+        StdDraw.setPenColor( Color.white );
+        StdDraw.filledRectangle( 0.5*( boardSize+1 ), 1.125*( boardSize+1 )*( 1.0 + 1.0/4.0 ),
+                0.4*( boardSize+1 ),
+                0.125*( boardSize+1 )*( 1.0 + 1.0/4.0 ) );
+        StdDraw.setPenColor( Color.BLACK );
+        StdDraw.setFont(tips);
+        StdDraw.text( 0.5*( boardSize+1 ), 1.125*( boardSize+1 ),
+                "It's a foul! You have no chance to undo!" );
+        StdDraw.text( 0.5*( boardSize+1 ), 1.050*( boardSize+1 ),
+                "Please make it up." );
+        StdDraw.show();
+        StdDraw.pause(3000);                                         //暂停三秒
+        StdDraw.setPenColor( Color.white );
+        StdDraw.filledRectangle( 0.5*( boardSize+1 ), 1.125*( boardSize+1 )*( 1.0 + 1.0/4.0 ),
+                0.4*( boardSize+1 ),
+                0.125*( boardSize+1 )*( 1.0 + 1.0/4.0 ) );
+        showBoard( boardSize, cross );
+    }
+    //以上八个为界面构造函数
+
+    public static boolean clickButtonToChooseMode (int buttonOrder) {  //判断是否能点到选择模式的按钮
+        double x = StdDraw.mouseX();
+        double y = StdDraw.mouseY();
+        return                          0.225 < x && x < 0.775
+                                                  &&
+        0.1 * ((4 - buttonOrder) * 2) - 0.075 < y && y < 0.1 * ((4 - buttonOrder) * 2) + 0.075;
+    }
+    public static boolean clickButtonToFormSize (int boardSize) {   //判断是否能点到选择棋盘大小的按钮
+        double x = StdDraw.mouseX();
+        double y = StdDraw.mouseY();
+        return 0.225 < x && x < 0.775 && 0.1 * (21 - boardSize) - 0.075 < y && y < 0.1 * (21 - boardSize) + 0.075;
+    }
+    public static boolean clickButtonToExit1() {   //判断是否能点到首页退出的按钮
+        double x = StdDraw.mouseX();
+        double y = StdDraw.mouseY();
+        return 0.82 < x && x < 0.98 && 0.02 < y && y < 0.08;
+    }
+    public static boolean clickButtonToExit2() {   //判断是否能点到游戏结束退出的按钮
+        double x = StdDraw.mouseX();
+        double y = StdDraw.mouseY();
+        return 0.575 < x && x < 0.925 && 0.175 < y && y < 0.325;
+    }
+    public static boolean clickButtonToPlayAgain() {   //判断是否能点到再玩一次的按钮
+        double x = StdDraw.mouseX();
+        double y = StdDraw.mouseY();
+        return 0.075 < x && x < 0.425 && 0.175 < y && y < 0.325;
+    }
+    public static boolean clickButtonToUndo( int boardSize ) {  //判断是否能点到悔棋的按钮
+        double x = StdDraw.mouseX();
+        double y = StdDraw.mouseY();
+        return 0.82 * (boardSize + 1) * (1.0 + 1.0 / 4.0) < x && x < 0.98 * (boardSize + 1) * (1.0 + 1.0 / 4.0)
+                                                              &&
+                                   0.02 * (boardSize + 1) < y && y < 0.08 * (boardSize + 1);
+    }
+    //以上六个为按键判断函数
+
+    public static boolean canInput( int cross ) {    //判断是否能放棋子
+        return cross == 0;
+    }
+    public static int checkVictory(int x,int y,int chess, int[][] cross, int boardSize ) {  //判断是否赢了
+        //横向判断
+        int trans = 0;
+        for(int i = x-4; i < x+5 ; i++) {
+            if(i < 0 || i >= boardSize+1) continue;
+            if(cross[i][y] == chess) {
+                trans++;
+            }
+            else {
+                trans = 0;
+            }
+            if(trans == 5) return chess;
+        }
+        //纵向判断
+        int longi = 0;
+        for(int i = y-4 ; i < y+5 ; i++) {
+            if(i < 0 || i >= boardSize+1) continue;
+            if(cross[x][i] == chess) {
+                longi++;
+            }
+            else {
+                longi=0;
+            }
+            if(longi == 5) return chess;
+        }
+        //从左上到右下
+        int leftUPToDown = 0;
+        for(int i = x-4, j = y+4 ; i < x+5 && j > y-5 ; i++, j--) {
+            if(i < 0 || i >= boardSize+1 || j < 0 || j >= boardSize+1) continue;
+            if(cross[i][j] == chess) {
+                leftUPToDown++;
+            }else {
+                leftUPToDown=0;
+            }
+            if(leftUPToDown == 5) return chess;
+        }
+        //从左下到右上
+        int leftDownToUP = 0;
+        for(int i = x+4, j = y+4; i > x-5 && j > y-5; i--, j--) {
+            if(i < 0 || i >= boardSize+1 || j < 0 || j >= boardSize+1) continue;
+            if(cross[i][j] == chess) {
+                leftDownToUP++;
+            }else {
+                leftDownToUP=0;
+            }
+            if(leftDownToUP == 5) return chess;      //只要有任意一个方向连成五子就返回棋子颜色，表明该棋子赢了
+        }
+        return 0;
+    }
+    public static boolean canUndo( ArrayList<chess> list ) {   //判断是否能悔棋
+        return list.size() > 0;
+    }
+    public static void showBoard( int boardSize, int[][] cross ) {   //悔棋后重新显示棋盘
+        StdDraw.clear();
+        formBoard( boardSize );
+        for (int i = 1; i < boardSize + 1; i++) {
+            for (int j = 1; j < boardSize + 1; j++) {
+
+                if (cross[i][j] == -1) {
+                    StdDraw.setPenColor(Color.WHITE);
+                    StdDraw.filledCircle(j, i, 0.4);
+
+                }
+                if (cross[i][j] == 1) {
+                    StdDraw.setPenColor(Color.BLACK);
+                    StdDraw.filledCircle(j, i, 0.4);
+
+                }
+            }
+        }
+        StdDraw.show();
+    }
+    //以下五个为禁手函数
+    public static boolean hasBlackTriplet( int x, int y, int[][] cross, int boardSize ) {  //判断是否形成三联体
+        //横向判断
+        int trans = 0;
+        for(int i = x-2; i < x+3 ; i++) {
+            if(i < 0 || i >= boardSize+1) continue;
+            if(cross[i][y] == 1) {
+                if ( cross[i+1][y] == -1 ) return false;
+                trans++;
+            }
+            else if ( cross[i][y] == -1 ) {
+                if ( cross[i+1][y] == 1 ) return false;
+            }
+            else {
+                trans = 0;
+            }
+            if(trans == 3) return true;
+        }
+        //纵向判断
+        int longi = 0;
+        for(int i = y-2 ; i < y+3 ; i++) {
+            if(i < 0 || i >= boardSize+1) continue;
+            if(cross[x][i] == 1) {
+                if ( cross[x][i+1] == -1 ) return false;
+                longi++;
+            }
+            else if ( cross[x][i] == -1 ) {
+                if ( cross[x][i+1] == 1 ) return false;
+            }
+            else {
+                longi=0;
+            }
+            if(longi == 3) return true;
+        }
+        //从左上到右下
+        int leftUPToDown = 0;
+        for(int i = x-2, j = y+2 ; i < x+3 && j > y-3 ; i++, j--) {
+            if(i < 0 || i >= boardSize+1 || j < 0 || j >= boardSize+1) continue;
+            if(cross[i][j] == 1) {
+                if ( cross[i+1][j-1] == -1 ) return false;
+                leftUPToDown++;
+            }
+            else if ( cross[i][j] == -1 ) {
+                if ( cross[i+1][j-1] == 1 ) return false;
+            }
+            else {
+                leftUPToDown=0;
+            }
+            if(leftUPToDown == 3) return true;
+        }
+        //从左下到右上
+        int leftDownToUP = 0;
+        for(int i = x+2, j = y+2; i > x-3 && j > y-3; i--, j--) {
+            if(i < 0 || i >= boardSize+1 || j < 0 || j >= boardSize+1) continue;
+            if(cross[i][j] == 1) {
+                if ( cross[i-1][j-1] == -1 ) return false;
+                leftDownToUP++;
+            }
+            else if ( cross[i][j] == -1 ) {
+                if ( cross[i-1][j-1] == 1 ) return false;
+            }
+            else {
+                leftDownToUP=0;
+            }
+            if(leftDownToUP == 3) return true;
+        }
+        return false;
+    }
+    public static int findTripletNumber( int x, int y, int[][] cross, int boardSize ) {  //判断形成三联体的数目
+        int num = 0;
+        //横向判断
+        int trans = 0;
+        for(int i = x-2; i < x+3 ; i++) {
+            if(i < 0 || i >= boardSize+1) continue;
+            if(cross[i][y] == 1) {
+                if ( cross[i+1][y] == -1 ) return -1;
+                trans++;
+            }
+            else if ( cross[i][y] == -1 ) {
+                if ( cross[i+1][y] == 1 ) return -1;
+            }
+            else {
+                trans = 0;
+            }
+            if(trans == 3) num++;
+        }
+        //纵向判断
+        int longi = 0;
+        for(int i = y-2 ; i < y+3 ; i++) {
+            if(i < 0 || i >= boardSize+1) continue;
+            if(cross[x][i] == 1) {
+                if ( cross[x][i+1] == -1 ) return -1;
+                longi++;
+            }
+            else if ( cross[x][i] == -1 ) {
+                if ( cross[x][i+1] == 1 ) return -1;
+            }
+            else {
+                longi=0;
+            }
+            if(longi == 3) num++;
+        }
+        //从左上到右下
+        int leftUPToDown = 0;
+        for(int i = x-2, j = y+2 ; i < x+3 && j > y-3 ; i++, j--) {
+            if(i < 0 || i >= boardSize+1 || j < 0 || j >= boardSize+1) continue;
+            if(cross[i][j] == 1) {
+                if ( cross[i+1][j-1] == -1 ) return -1;
+                leftUPToDown++;
+            }
+            else if ( cross[i][j] == -1 ) {
+                if ( cross[i+1][j-1] == 1 ) return -1;
+            }
+            else {
+                leftUPToDown=0;
+            }
+            if(leftUPToDown == 3) num++;
+        }
+        //从左下到右上
+        int leftDownToUP = 0;
+        for(int i = x+2, j = y+2; i > x-3 && j > y-3; i--, j--) {
+            if(i < 0 || i >= boardSize+1 || j < 0 || j >= boardSize+1) continue;
+            if(cross[i][j] == 1) {
+                if ( cross[i-1][j-1] == -1 ) return -1;
+                leftDownToUP++;
+            }
+            else if ( cross[i][j] == -1 ) {
+                if ( cross[i-1][j-1] == 1 ) return -1;
+            }
+            else {
+                leftDownToUP=0;
+            }
+            if(leftDownToUP == 3) num++;
+        }
+        return num;
+    }
+    public static String findOrientation( int x, int y, int[][] cross, int boardSize ) {    //判断三联体的延伸方向
+        String orientation = "";
+        //横向判断
+        int trans = 0;
+        for(int i = x-2; i < x+3 ; i++) {
+            if(i < 0 || i >= boardSize+1) continue;
+            if(cross[i][y] == 1) {
+                if ( cross[i+1][y] == -1 ) return "null";
+                trans++;
+            }
+            else if ( cross[i][y] == -1 ) {
+                if ( cross[i+1][y] == 1 ) return "null";
+            }
+            else {
+                trans = 0;
+            }
+            if(trans == 3) orientation = "trans";
+        }
+        //纵向判断
+        int longi = 0;
+        for(int i = y-2 ; i < y+3 ; i++) {
+            if(i < 0 || i >= boardSize+1) continue;
+            if(cross[x][i] == 1) {
+                if ( cross[x][i+1] == -1 ) return "null";
+                longi++;
+            }
+            else if ( cross[x][i] == -1 ) {
+                if ( cross[x][i+1] == 1 ) return "null";
+            }
+            else {
+                longi=0;
+            }
+            if(longi == 3) orientation = "longi";
+        }
+        //从左上到右下
+        int leftUPToDown = 0;
+        for(int i = x-2, j = y+2 ; i < x+3 && j > y-3 ; i++, j--) {
+            if(i < 0 || i >= boardSize+1 || j < 0 || j >= boardSize+1) continue;
+            if(cross[i][j] == 1) {
+                if ( cross[i+1][j-1] == -1 ) return "null";
+                leftUPToDown++;
+            }
+            else if ( cross[i][j] == -1 ) {
+                if ( cross[i+1][j-1] == 1 ) return "null";
+            }
+            else {
+                leftUPToDown=0;
+            }
+            if(leftUPToDown == 3) orientation = "leftUPToDown";
+        }
+        //从左下到右上
+        int leftDownToUP = 0;
+        for(int i = x+2, j = y+2; i > x-3 && j > y-3; i--, j--) {
+            if(i < 0 || i >= boardSize+1 || j < 0 || j >= boardSize+1) continue;
+            if(cross[i][j] == 1) {
+                if ( cross[i-1][j-1] == -1 ) return "null";
+                leftDownToUP++;
+            }
+            else if ( cross[i][j] == -1 ) {
+                if ( cross[i-1][j-1] == 1 ) return "null";
+            }
+            else {
+                leftDownToUP=0;
+            }
+            if(leftDownToUP == 3) orientation = "leftDownToUP";
+        }
+        return orientation;
+    }
+    public static void forbiddenMove( int[][] cross, ArrayList<chess> list, int boardSize ) {  //禁手操作
+        chess former = list.get( list.size() - 1 );
+        int x = former.getX();
+        int y = former.getY();
+
+        list.remove( list.size() - 1 );
+        cross[y][x] = 0;                                                                        //将放好的棋子撤回
+
+        final Font tips = new Font("SansSerif", Font.BOLD, 25);
+        StdDraw.setPenColor( Color.white );
+        StdDraw.filledRectangle( 0.5*( boardSize+1 ), 1.125*( boardSize+1 )*( 1.0 + 1.0/4.0 ),
+                0.4*( boardSize+1 ),
+                0.125*( boardSize+1 )*( 1.0 + 1.0/4.0 ) );
+        StdDraw.setPenColor( Color.BLACK );
+        StdDraw.setFont(tips);
+        StdDraw.text( 0.5*( boardSize+1 ), 1.125*( boardSize+1 ),
+                "This is a forbidden move!" );
+        StdDraw.text( 0.5*( boardSize+1 ), 1.050*( boardSize+1 ),
+                "Please place it to another place." );                            //提示禁手
+
+        StdDraw.show();
+        StdDraw.pause(3000);                                                        //暂停三秒
+
+        StdDraw.setPenColor( Color.white );
+        StdDraw.filledRectangle( 0.5*( boardSize+1 ), 1.125*( boardSize+1 )*( 1.0 + 1.0/4.0 ),
+                0.4*( boardSize+1 ),
+                0.125*( boardSize+1 )*( 1.0 + 1.0/4.0 ) );                    //还原棋盘布局
+        showBoard( boardSize, cross );
+
+    }
+    public static boolean isForbiddenMove( int x, int y, int[][] cross, int boardSize ) {  //判断是否是禁手
+        if ( hasBlackTriplet( x, y, cross, boardSize ) ) {           //如果出现三联体
+            if ( findTripletNumber( x, y, cross, boardSize ) >= 2 ) return true; //且放下黑子后，刚放的位置处于多个三联体的焦点，直接禁手
+            else {
+                String orientation = findOrientation( x, y, cross, boardSize );  //否则就沿着三联体查找，直到找到焦点
+                switch (orientation) {
+                    case "trans":
+                        for (int i = x - 2; i < x + 3; i++) {
+                            if (i < 0 || i >= boardSize + 1) continue;
+                            if (findTripletNumber(i, y, cross, boardSize) >= 2) {  //找到焦点后判断禁手
+                                return true;
+                            }
+                        }
+                        break;
+                    case "longi":
+                        for (int i = y - 2; i < y + 3; i++) {
+                            if (i < 0 || i >= boardSize + 1) continue;
+                            if (findTripletNumber(x, i, cross, boardSize) >= 2) {
+                                return true;
+                            }
+                        }
+                        break;
+                    case "leftUPToDown":
+                        for (int i = x - 2, j = y + 2; i < x + 3 && j > y - 3; i++, j--) {
+                            if (i < 0 || i >= boardSize + 1 || j < 0 || j >= boardSize + 1) continue;
+                            if (findTripletNumber(i, j, cross, boardSize) >= 2) {
+                                return true;
+                            }
+                        }
+                        break;
+                    case "leftDownToUP":
+                        for(int i = x+2, j = y+2; i > x-3 && j > y-3; i--, j--) {
+                            if(i < 0 || i >= boardSize+1 || j < 0 || j >= boardSize+1) continue;
+                            if(findTripletNumber(i, j, cross, boardSize) >= 2) {
+                                return true;
+                            }
+                        }
+                        break;
+                }
+            }
+        }
+        return false;  //没找到焦点就没有禁手
+    }
+
+    public static void computerFindBestPlaceAndPutDownAChess( int boardSize, int[][] cross, ArrayList<chess> list, int color ) {
+        int[][] score = new int[boardSize+1][boardSize+1];  //机器核心算法，建议阅读末尾的网址文章后再看
+        for ( int i = 1; i < boardSize+1; i++ ) {
+            for ( int j = 1; j < boardSize+1; j++ ) {
+                score[i][j] = 0;
+            }                                                //每个位置权值初始化为0
+        }
+
+        int humanChessNumber = 0;  //人下的棋子数
+        int computerChessNumber = 0;  //机器下的棋子数
+        int quintupletScore;    //五连体分数
+
+        int bestX = 0;    //最优位置x,y
+        int bestY = 0;
+        int maxScore = 0;  //权值最大值
+        //横向
+        for(int i = 1; i < boardSize+1; i++){
+            for(int j = 1; j < boardSize-3; j++){
+                for ( int k = j; k < j+5; k++ ) {
+                    if(cross[i][k] == color) computerChessNumber++;
+                    else if(cross[i][k] == -color ) humanChessNumber++;
+                }
+
+                quintupletScore = calculateScore( humanChessNumber, computerChessNumber );   //计算权值
+                //为该五连体的每个位置添加分数
+                for(int k = j; k < j + 5; k++) {
+                    score[i][k] += quintupletScore;
+                }
+                //置零
+                humanChessNumber = 0;//五连体中的人棋数量
+                computerChessNumber = 0;//机器棋数量
+            }
+        }
+        //纵向
+        for(int i = 1; i < boardSize+1; i++){
+            for(int j = 1; j < boardSize-3; j++){
+                for ( int k = j; k < j+5; k++ ) {
+                    if(cross[k][i] == color) computerChessNumber++;
+                    else if(cross[k][i] == -color) humanChessNumber++;
+                }
+
+                quintupletScore = calculateScore( humanChessNumber, computerChessNumber );
+
+                for(int k = j; k < j + 5; k++) {
+                    score[k][i] += quintupletScore;
+                }
+                //置零
+                humanChessNumber = 0;
+                computerChessNumber = 0;
+            }
+        }
+        //右上
+        for(int i = boardSize; i >= 5; i--){
+            for(int j = 1, k = i; j < boardSize+1 && k >= 1; j++, k--){
+                int m = k;
+                int n = j;
+                while ( m > k-5 && k-5 >= 0 ) {
+                    if(cross[m][n] == color) computerChessNumber++;
+                    else if(cross[m][n] == -color) humanChessNumber++;
+                    m--;
+                    n++;
+                }
+
+                //注意斜向判断的时候，可能构不成五连体（靠近四个角落），遇到这种情况要忽略掉
+                if(m == k-5){
+                    quintupletScore = calculateScore( humanChessNumber, computerChessNumber );
+
+                    for(m = k, n = j; m > k-5; m--, n++) {
+                        score[m][n] += quintupletScore;
+                    }
+                }
+                //置零
+                humanChessNumber = 0;
+                computerChessNumber = 0;
+            }
+        }
+        //左下
+        for(int i = 1; i < boardSize+1; i++){
+            for(int j = boardSize, k = i; j >= 1 && k < boardSize+1; j--, k++){
+                int m = k;
+                int n = j;
+                while (m < k+5 && k+5 <= boardSize+1) {
+                    if(cross[n][m] == color) computerChessNumber++;
+                    else if(cross[n][m] == -color) humanChessNumber++;
+                    m++;
+                    n--;
+                }
+
+                //注意斜向判断的时候，可能构不成五元组（靠近四个角落），遇到这种情况要忽略掉
+                if(m == k+5){
+                    quintupletScore = calculateScore( humanChessNumber, computerChessNumber );
+
+                    for(m = k, n = j; m < k+5; m++, n--) {
+                        score[n][m] += quintupletScore;
+                    }
+                }
+                //置零
+                humanChessNumber = 0;
+                computerChessNumber = 0;
+            }
+        }
+        //左上
+        for(int i = 1; i < boardSize-3; i++){
+            for(int j = 1, k = i; j < boardSize+1 && k < boardSize+1; j++, k++){
+                int m = k;
+                int n = j;
+                while ( m < k+5 && k+5 <= boardSize+1 ) {
+                    if(cross[m][n] == color) computerChessNumber++;
+                    else if(cross[m][n] == -color) humanChessNumber++;
+                    m++;
+                    n++;
+                }
+
+                //注意斜向判断的时候，可能构不成五元组（靠近四个角落），遇到这种情况要忽略掉
+                if(m == k+5){
+                    quintupletScore = calculateScore( humanChessNumber, computerChessNumber );
+
+                    for(m = k, n = j; m < k+5; m++, n++) {
+                        score[m][n] += quintupletScore;
+                    }
+                }
+                //置零
+                humanChessNumber = 0;
+                computerChessNumber = 0;
+            }
+        }
+        //右下
+        for(int i = 1; i < boardSize-3; i++){
+            for(int j = 1, k = i; j < boardSize+1 && k < boardSize+1; j++, k++){
+                int m = k;
+                int n = j;
+                while ( m < k+5 && k+5 <= boardSize+1 ) {
+                    if(cross[n][m] == color) computerChessNumber++;
+                    else if(cross[n][m] == -color) humanChessNumber++;
+                    m++;
+                    n++;
+                }
+
+                //注意斜向判断的时候，可能构不成五元组（靠近四个角落），遇到这种情况要忽略掉
+                if(m == k+5){
+                    quintupletScore = calculateScore( humanChessNumber, computerChessNumber );
+
+                    for(m = k, n = j; m < k+5; m++, n++) {
+                        score[n][m] += quintupletScore;
+                    }
+                }
+                //置零
+                humanChessNumber = 0;
+                computerChessNumber = 0;
+            }
+        }
+
+        for(int i = 1; i < boardSize+1; i++){
+            for(int j = 1; j < boardSize+1; j++){
+                if(cross[i][j] == 0 && score[i][j] > maxScore){
+                    bestX = i;
+                    bestY = j;
+                    maxScore = score[i][j];
+                }                                                 //找到最高分数所在空位的坐标
+            }
+        }
+
+        if ( bestX > 0 && bestY > 0 && canInput( cross[bestX][bestY] ) ) {              //填入棋子
+                cross[bestX][bestY] = color;
+                list.add( new chess( bestY, bestX) );
+        }
+    }
+    public static int calculateScore( int humanChessNumber, int computerChessNumber ) {  //计算权值函数
+        //既有人类落子，又有机器落子，判分为0
+        if(humanChessNumber > 0 && computerChessNumber > 0){
+            return 0;
+        }
+        //全部为空，没有落子，判分为7
+        if(humanChessNumber == 0 && computerChessNumber == 0){
+            return 7;
+        }
+        //机器落1子，判分为35
+        if(computerChessNumber == 1){
+            return 35;
+        }
+        //机器落2子，判分为800
+        if(computerChessNumber == 2){
+            return 800;
+        }
+        //机器落3子，判分为15000
+        if(computerChessNumber == 3){
+            return 15000;
+        }
+        //机器落4子，判分为800000
+        if(computerChessNumber == 4){
+            return 800000;
+        }
+        //人类落1子，判分为15
+        if(humanChessNumber == 1){
+            return 15;
+        }
+        //人类落2子，判分为400
+        if(humanChessNumber == 2){
+            return 400;
+        }
+        //人类落3子，判分为1800
+        if(humanChessNumber == 3){
+            return 1800;
+        }
+        //人类落4子，判分为100000
+        if(humanChessNumber == 4){
+            return 100000;
+        }
+        return -1;//其他结果肯定出错
+    }
+    //以上十一个为棋盘操作函数
+}
+/*——————致谢：
+        人机对战参考资料：人机版五子棋两种算法概述
+        原文链接：https://blog.csdn.net/u011587401/article/details/50877828
+*/
